@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 constexpr uint16_t ETH_TYPE_ARP = 0x0806;
@@ -35,4 +36,3 @@ struct addr_pair {
     haddr_t haddr;
     std::vector<addr_mask> paddrs;
 };
-

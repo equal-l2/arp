@@ -1,5 +1,19 @@
-#include "types.h"
 #ifndef __linux__
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <ifaddrs.h>
+#include <net/bpf.h>
+#include <net/ethernet.h>
+#include <net/if.h>
+#include <net/if_dl.h>
+#include <sys/errno.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+#include "types.h"
+#include "common.h"
+
 struct addr_pair get_addr_pair(const char* ifname) {
     struct ifaddrs* ifa;
     int ret = getifaddrs(&ifa);
