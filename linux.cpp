@@ -1,52 +1,36 @@
-#ifndef __linux__
+#ifdef __linux__
 #include <arpa/inet.h>
-#include <fcntl.h>
-#include <ifaddrs.h>
-#include <net/bpf.h>
-#include <net/ethernet.h>
-#include <net/if.h>
-#include <net/if_dl.h>
-#include <sys/errno.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <ifaddrs.h>
+#include <linux/if_packet.h>
+#include <net/if.h>
+#include <net/ethernet.h>
+
+#include <cstring>
 
 #include "types.h"
 #include "common.h"
-
 int sock_open(const char* dname) {
-    char device[sizeof("/dev/bpf0000")];
-    int fd = -1;
-    for (int i = 0; i < 10000; i++) {
-        sprintf(device, "/dev/bpf%d", i);
-        fd = open(device, O_RDWR | O_NONBLOCK);
-
-        if (fd == -1 && errno == EBUSY) {
-            perror("open");
-            continue;
-        }
-        else break;
-    }
-
-    if (fd == -1) {
-        perror("open");
-        return -1;
-    }
-    struct ifreq ifr;
-
-    strcpy(ifr.ifr_name, dname); 
-    if (ioctl(fd, BIOCSETIF, &ifr) == -1) {
-        perror("ioctl");
+    int sock = socket(AF_PACKET, SOCK_RAW | SOCK_NONBLOCK, htons(ETH_P_ALL));
+    if (sock == -1) {
+        perror("sock");
         return -1;
     }
 
-    unsigned yes = 1;
-    if (ioctl(fd, BIOCIMMEDIATE, &yes) == -1) {
-        perror("ioctl");
+    const int len = strlen(dname);
+    if (len >= IFNAMSIZ) {
+        fprintf(stderr, "setsockopt: ifname is too long\n");
+        return -1;
+    }
+    if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, dname, len) == -1) {
+        close(sock);
+        perror("setsockopt");
         return -1;
     }
 
-    return fd;
+    return sock;
 }
 
 std::optional<std::vector<struct arp>> read_arp_resp(int fd, size_t buflen) {
@@ -69,25 +53,15 @@ std::optional<std::vector<struct arp>> read_arp_resp(int fd, size_t buflen) {
                 return std::nullopt;
         }
     }
-
-    char* packet = buf;
-    while(packet - buf < len) {
-        struct bpf_hdr* bpf_header;
-        bpf_header = (struct bpf_hdr*)packet;
-        if (bpf_header->bh_caplen >= sizeof(struct ether_header)) {
-            struct ether_header* eth;
-            eth = (struct ether_header*)(packet + bpf_header->bh_hdrlen);
-            std::optional<struct arp> a = extract_arp(eth);
-            if (a.has_value() && a->op == 2) {
-                ret.push_back(*a);
-            }
-        }
-        packet += BPF_WORDALIGN(bpf_header->bh_hdrlen + bpf_header->bh_caplen);
+    //printf("len: %d\n", len);
+    auto eth = (struct ether_header*)buf;
+    std::optional<struct arp> a = extract_arp(eth);
+    if (a.has_value() && a->op == 2) {
+        ret.push_back(*a);
     }
     delete[] buf;
     return std::move(ret);
 }
-
 struct addr_pair get_addr_pair(const char* ifname) {
     struct ifaddrs* ifa;
     int ret = getifaddrs(&ifa);
@@ -102,9 +76,9 @@ struct addr_pair get_addr_pair(const char* ifname) {
         if (strcmp(ifname, it->ifa_name) == 0) {
             struct sockaddr* sa = it->ifa_addr;
             switch (sa->sa_family) {
-                case AF_LINK: 
+                case AF_PACKET:
                     {
-                        uint8_t* a = (uint8_t*)LLADDR((struct sockaddr_dl*)sa);
+                        uint8_t* a = ((struct sockaddr_ll*)sa)->sll_addr;
                         memcpy(ap.haddr.data(), a, 6);
                         break;
                     }

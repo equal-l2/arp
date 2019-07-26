@@ -1,3 +1,4 @@
+#include <arpa/inet.h>
 #include <sys/errno.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -45,7 +46,7 @@ int main(int argc, char** argv) {
 
     printf("Host MAC address : %s\n", format_haddr(ap.haddr).data());
     for(addr_mask am : ap.paddrs) {
-        printf("[*] Sending an ARP request %s\n", format_paddr(am.addr).data());
+        printf("[*] Sending an ARP request as %s\n", format_paddr(am.addr).data());
 
         paddr_t netaddr, bcastaddr;
         for(int i = 0; i < PALEN; i++) {

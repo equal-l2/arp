@@ -1,4 +1,7 @@
+#include <arpa/inet.h>
 #include <net/ethernet.h>
+
+#include <cstring>
 
 #include "types.h"
 #include "common.h"
@@ -76,9 +79,10 @@ std::optional<struct arp> extract_arp(const struct ether_header* eth) {
     uint16_t eth_type = ntohs(eth->ether_type);
 
     if (eth_type != ETH_TYPE_ARP) {
-        //printf("Type differs, not an arp packet\n");
         return std::nullopt;
     }
+
+    printf("Got an arp packet\n");
 
     const uint8_t* payload = (uint8_t*)eth + sizeof(struct ether_header);
     struct arp a;

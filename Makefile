@@ -1,5 +1,5 @@
 CXXFLAGS ?= -std=c++17
-arpscan: bsd.o main.o common.o
+arpscan: bsd.o common.o linux.o main.o 
 	$(CXX) $^ -o $@ $(CXXFLAGS)
 
 %.cpp: types.h
