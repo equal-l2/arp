@@ -82,7 +82,7 @@ std::optional<struct arp> extract_arp(const struct ether_header* eth) {
         return std::nullopt;
     }
 
-    printf("Got an arp packet\n");
+    //printf("Got an arp packet\n");
 
     const uint8_t* payload = (uint8_t*)eth + sizeof(struct ether_header);
     struct arp a;

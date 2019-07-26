@@ -12,3 +12,8 @@ https://gist.github.com/qxj/5618237
 
 BSDでgetifaddrsからMACアドレスを取得する方法
 https://stackoverflow.com/questions/6762766/mac-address-with-getifaddrs
+
+Linuxではsendtoを使わないとうまく動かない
+https://stackoverflow.com/questions/16710040/arp-request-and-reply-using-c-socket-programming
+
+IPv6が動いてるとうまく行かないことがある？(ipv6.disable_ipv6=1で快適に)

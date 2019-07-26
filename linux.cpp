@@ -36,7 +36,7 @@ int sock_open(const char* dname) {
 std::optional<std::vector<struct arp>> read_arp_resp(int fd, size_t buflen) {
     char* buf = new char[buflen];
     std::vector<arp> ret;
-    ssize_t len = read(fd, buf, buflen);
+    ssize_t len = recvfrom(fd, buf, buflen, 0, NULL, NULL);
     if(len <= 0) {
         delete[] buf;
         switch (len) {
@@ -62,6 +62,7 @@ std::optional<std::vector<struct arp>> read_arp_resp(int fd, size_t buflen) {
     delete[] buf;
     return std::move(ret);
 }
+
 struct addr_pair get_addr_pair(const char* ifname) {
     struct ifaddrs* ifa;
     int ret = getifaddrs(&ifa);

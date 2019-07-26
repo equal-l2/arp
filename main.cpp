@@ -2,6 +2,9 @@
 #include <sys/errno.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
+#include <net/ethernet.h>
 
 #include <array>
 #include <chrono>
@@ -9,8 +12,9 @@
 #include <optional>
 #include <thread>
 
-#ifndef __linux__
-#   include <sys/ioctl.h>
+#ifdef __linux__
+#   include <linux/if_packet.h>
+#else
 #   include <net/bpf.h>
 #endif
 
@@ -45,6 +49,27 @@ int main(int argc, char** argv) {
     }
 
     printf("Host MAC address : %s\n", format_haddr(ap.haddr).data());
+#ifdef __linux__
+    struct ifreq ifr;
+    strncpy(ifr.ifr_name, argv[1], IFNAMSIZ);
+    if (ioctl(fd, SIOCGIFINDEX, &ifr) == -1) {
+        perror("ioctl");
+        return -1;
+    }
+    struct sockaddr_ll sendaddr;
+    sendaddr.sll_family = AF_PACKET;
+    sendaddr.sll_protocol = htons(ETH_P_ARP);
+    sendaddr.sll_ifindex = ifr.ifr_ifindex;
+    sendaddr.sll_hatype = 0;
+    sendaddr.sll_pkttype = 0;
+    sendaddr.sll_halen = HALEN;
+    memcpy(sendaddr.sll_addr, ap.haddr.data(), HALEN);
+
+    struct sockaddr_ll recvaddr = sendaddr;
+    recvaddr.sll_pkttype = 0;
+    recvaddr.sll_protocol = htons(ETH_P_ARP);
+
+#endif
     for(addr_mask am : ap.paddrs) {
         printf("[*] Sending an ARP request as %s\n", format_paddr(am.addr).data());
 
@@ -58,7 +83,11 @@ int main(int argc, char** argv) {
             uint32_t addr = ntohl(i);
             paddr_t dst_addr;
             memcpy(dst_addr.data(), &addr, PALEN);
+#ifdef __linux__
+            sendto(fd, generate_arp_frame(ap.haddr, am.addr, dst_addr).data(), 42, 0, (struct sockaddr*)&sendaddr, sizeof(sendaddr));
+#else
             write(fd, generate_arp_frame(ap.haddr, am.addr, dst_addr).data(), 42);
+#endif
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
             auto ret = read_arp_resp(fd, buf_len);
@@ -68,6 +97,8 @@ int main(int argc, char** argv) {
             for(arp a : *ret) {
                 if (a.t_ha == ap.haddr) {
                     printf("%s : %s\n", format_haddr(a.s_ha).data(), format_paddr(a.s_pa).data());
+                } else {
+                    printf("Wrong %s : %s\n", format_haddr(a.s_ha).data(), format_paddr(a.s_pa).data());
                 }
             }
         }
@@ -83,8 +114,8 @@ int main(int argc, char** argv) {
         for(arp a : *ret) {
             if (a.t_ha == ap.haddr) {
                 printf("%s : %s\n", format_haddr(a.s_ha).data(), format_paddr(a.s_pa).data());
-            } else {
-                printf("Arp response to the other host");
+            }  else {
+                printf("Wrong %s : %s\n", format_haddr(a.s_ha).data(), format_paddr(a.s_pa).data());
             }
         }
     }

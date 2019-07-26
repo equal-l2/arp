@@ -6,3 +6,6 @@ arpscan: bsd.o common.o linux.o main.o
 
 %.o: %.cpp
 	$(CXX) -c $< $(CXXFLAGS)
+
+clean:
+	$(RM) *.o arpscan
