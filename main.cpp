@@ -229,7 +229,7 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    printf("MAC address : %s\n", format_haddr(ap.haddr).data());
+    printf("Host MAC address : %s\n", format_haddr(ap.haddr).data());
     for(paddr_t addr : ap.paddrs) {
         printf("Send an ARP request to %s as %s\n", format_paddr(dst_addr).data(), format_paddr(addr).data());
         write(fd, generate_arp_frame(ap.haddr, addr, dst_addr).data(), 42);
@@ -250,7 +250,7 @@ int main(int argc, char** argv) {
                 struct ether_header* eth;
                 eth = (struct ether_header*)(packet + bpf_header->bh_hdrlen);
                 struct arp* a = extract_arp(eth);
-                if (a != nullptr && a->op == 2) {
+                if (a != nullptr && a->op == 2 && a->s_pa == dst_addr) {
                     printf("%s : %s\n", format_paddr(a->s_pa).data(), format_haddr(a->s_ha).data());
                 }/* else {
                     std::array<uint8_t, 6> haddr;
@@ -261,7 +261,6 @@ int main(int argc, char** argv) {
             packet += BPF_WORDALIGN(bpf_header->bh_hdrlen + bpf_header->bh_caplen);
         }
     }
-END:
 
     close(fd);
 }
