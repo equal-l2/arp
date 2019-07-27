@@ -102,7 +102,7 @@ struct addr_pair get_addr_pair(const char* ifname) {
         if (strcmp(ifname, it->ifa_name) == 0) {
             struct sockaddr* sa = it->ifa_addr;
             switch (sa->sa_family) {
-                case AF_LINK: 
+                case AF_LINK:
                     {
                         uint8_t* a = (uint8_t*)LLADDR((struct sockaddr_dl*)sa);
                         memcpy(ap.haddr.data(), a, 6);

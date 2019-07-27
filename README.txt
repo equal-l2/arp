@@ -10,10 +10,13 @@ https://gist.github.com/XiaoFaye/086cb7b90033809b5fe8e6121b23bf4e
 getifaddrsでIPアドレスを取ってくる方法
 https://gist.github.com/qxj/5618237
 
-BSDでgetifaddrsからMACアドレスを取得する方法
+getifaddrsからMACアドレスを取得する方法
 https://stackoverflow.com/questions/6762766/mac-address-with-getifaddrs
 
 Linuxではsendtoを使わないとうまく動かない
 https://stackoverflow.com/questions/16710040/arp-request-and-reply-using-c-socket-programming
+
+LinuxのRaw Socketに特定のインタフェースを紐付ける方法
+https://stackoverflow.com/questions/3998569/how-to-bind-raw-socket-to-specific-interface
 
 IPv6が動いてるとうまく行かないことがある？(ipv6.disable_ipv6=1で快適に)
