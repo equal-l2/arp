@@ -8,7 +8,6 @@
 #include <fcntl.h>
 #include <ifaddrs.h>
 #include <net/bpf.h>
-#include <net/ethernet.h>
 #include <net/if.h>
 #include <net/if_dl.h>
 #include <sys/errno.h>
@@ -16,8 +15,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include <cstdio>
-#include <cstring>
+#include <cstdio> // sprintf
+#include <cstring> // strcpy
 
 #include "types.h"
 #include "common.h"
@@ -82,9 +81,9 @@ std::optional<std::vector<struct arp>> read_arp_resp(int fd, size_t buflen) {
     while(packet - buf < len) {
         struct bpf_hdr* bpf_header;
         bpf_header = (struct bpf_hdr*)packet;
-        if (bpf_header->bh_caplen >= sizeof(struct ether_header)) {
-            struct ether_header* eth;
-            eth = (struct ether_header*)(packet + bpf_header->bh_hdrlen);
+        if (bpf_header->bh_caplen >= sizeof(struct eth_hdr)) {
+            struct eth_hdr* eth;
+            eth = (struct eth_hdr*)(packet + bpf_header->bh_hdrlen);
             std::optional<struct arp> a = extract_arp(eth);
             if (a.has_value() && a->op == 2) {
                 ret.push_back(*a);

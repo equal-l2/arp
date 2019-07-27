@@ -11,6 +11,12 @@ constexpr uint8_t PALEN = 4;
 using haddr_arr = std::array<uint8_t, HALEN>;
 using paddr_arr = std::array<uint8_t, PALEN>;
 
+struct eth_hdr {
+    uint8_t dhost[6];
+    uint8_t shost[6];
+    uint16_t ether_type;
+};
+
 struct arp {
     uint16_t htype;
     uint16_t ptype;

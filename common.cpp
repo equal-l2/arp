@@ -3,7 +3,6 @@
 // or break build on FreeBSD
 
 #include <arpa/inet.h>
-#include <net/ethernet.h>
 
 #include <cstdio>
 #include <cstring>
@@ -80,7 +79,7 @@ std::array<uint8_t, 42> generate_arp_frame(const haddr_arr s_ha, const paddr_arr
     return ret;
 }
 
-std::optional<struct arp> extract_arp(const struct ether_header* eth) {
+std::optional<struct arp> extract_arp(const struct eth_hdr* eth) {
     uint16_t eth_type = ntohs(eth->ether_type);
 
     if (eth_type != ETH_TYPE_ARP) {
@@ -89,7 +88,7 @@ std::optional<struct arp> extract_arp(const struct ether_header* eth) {
 
     //printf("Got an arp packet\n");
 
-    const uint8_t* payload = (uint8_t*)eth + sizeof(struct ether_header);
+    const uint8_t* payload = (const uint8_t*)eth + sizeof(struct eth_hdr);
     struct arp a;
     a.htype = ntohs(*((const uint16_t*)payload));
     a.ptype = ntohs(*(const uint16_t*)(payload+2));

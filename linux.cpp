@@ -2,7 +2,6 @@
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <linux/if_packet.h>
-#include <net/ethernet.h>
 #include <net/if.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -54,7 +53,7 @@ std::optional<std::vector<struct arp>> read_arp_resp(int fd, size_t buflen) {
         }
     }
     //printf("len: %d\n", len);
-    auto eth = (struct ether_header*)buf;
+    auto eth = (struct eth_hdr*)buf;
     std::optional<struct arp> a = extract_arp(eth);
     if (a.has_value() && a->op == 2) {
         ret.push_back(*a);
