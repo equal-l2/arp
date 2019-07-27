@@ -1,6 +1,11 @@
+// must be included first
+#include <sys/types.h>
+// or break build on FreeBSD
+
 #include <arpa/inet.h>
 #include <net/ethernet.h>
 
+#include <cstdio>
 #include <cstring>
 
 #include "types.h"
