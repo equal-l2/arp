@@ -1,8 +1,8 @@
 #ifndef __linux__
 // must be included at first
-// or break build on FreeBSD
 #include <sys/types.h>
 #include <netinet/in.h>
+// or break build on FreeBSD
 
 #include <arpa/inet.h>
 #include <fcntl.h>
@@ -17,6 +17,7 @@
 #include <unistd.h>
 
 #include <cstdio>
+#include <cstring>
 
 #include "types.h"
 #include "common.h"
