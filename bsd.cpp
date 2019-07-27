@@ -15,6 +15,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <cerrno> // errno
 #include <cstdio> // sprintf
 #include <cstring> // strcpy
 
@@ -72,7 +73,7 @@ std::optional<std::vector<struct arp>> read_arp_resp(int fd, size_t buflen) {
                     return std::nullopt;
                 }
             case 0:
-                fprintf(stderr, "read: socket closed");
+                fprintf(stderr, "read: socket closed\n");
                 return std::nullopt;
         }
     }
