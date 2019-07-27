@@ -8,8 +8,8 @@ constexpr uint16_t ETH_TYPE_ARP = 0x0806;
 constexpr uint8_t HALEN = 6;
 constexpr uint8_t PALEN = 4;
 
-using haddr_t = std::array<uint8_t, HALEN>;
-using paddr_t = std::array<uint8_t, PALEN>;
+using haddr_arr = std::array<uint8_t, HALEN>;
+using paddr_arr = std::array<uint8_t, PALEN>;
 
 struct arp {
     uint16_t htype;
@@ -17,10 +17,10 @@ struct arp {
     uint8_t hlen;
     uint8_t plen;
     uint16_t op;
-    haddr_t s_ha;
-    paddr_t s_pa;
-    haddr_t t_ha;
-    paddr_t t_pa;
+    haddr_arr s_ha;
+    paddr_arr s_pa;
+    haddr_arr t_ha;
+    paddr_arr t_pa;
 };
 
 struct arp_frame {
@@ -28,11 +28,11 @@ struct arp_frame {
 };
 
 struct addr_mask {
-    paddr_t addr;
-    paddr_t mask;
+    paddr_arr addr;
+    paddr_arr mask;
 };
 
 struct addr_pair {
-    haddr_t haddr;
+    haddr_arr haddr;
     std::vector<addr_mask> paddrs;
 };

@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
     for(addr_mask am : ap.paddrs) {
         printf("[*] Sending an ARP request as %s\n", format_paddr(am.addr).data());
 
-        paddr_t netaddr, bcastaddr;
+        paddr_arr netaddr, bcastaddr;
         for(int i = 0; i < PALEN; i++) {
             netaddr[i] = am.addr[i] & am.mask[i];
             bcastaddr[i] = am.addr[i] | (~am.mask[i]);
@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
 
         for(uint32_t i = htonl(*((uint32_t*)netaddr.data()))+1; i < htonl(*((uint32_t*)bcastaddr.data())); i++) {
             uint32_t addr = ntohl(i);
-            paddr_t dst_addr;
+            paddr_arr dst_addr;
             memcpy(dst_addr.data(), &addr, PALEN);
 #ifdef __linux__
             sendto(fd, generate_arp_frame(ap.haddr, am.addr, dst_addr).data(), 42, 0, (struct sockaddr*)&sendaddr, sizeof(sendaddr));

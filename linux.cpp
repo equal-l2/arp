@@ -87,9 +87,9 @@ struct addr_pair get_addr_pair(const char* ifname) {
                     {
                         uint32_t ad = ((sockaddr_in*)sa)->sin_addr.s_addr;
                         uint32_t nm = ((sockaddr_in*)it->ifa_netmask)->sin_addr.s_addr;
-                        paddr_t pa;
+                        paddr_arr pa;
                         memcpy(pa.data(), &ad, 4);
-                        paddr_t mask;
+                        paddr_arr mask;
                         memcpy(mask.data(), &nm, 4);
                         ap.paddrs.push_back({pa, mask});
                         break;

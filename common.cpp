@@ -11,22 +11,22 @@
 #include "types.h"
 #include "common.h"
 
-std::array<char, 16> format_paddr(paddr_t pa) {
+std::array<char, 16> format_paddr(paddr_arr pa) {
     std::array<char, 16> ret;
     sprintf(ret.data(), "%d.%d.%d.%d", pa[0], pa[1], pa[2], pa[3]);
     return ret;
 }
 
-std::array<char, 18> format_haddr(haddr_t ha) {
+std::array<char, 18> format_haddr(haddr_arr ha) {
     std::array<char, 18> ret;
     sprintf(ret.data(), "%02x:%02x:%02x:%02x:%02x:%02x", ha[0], ha[1], ha[2], ha[3], ha[4], ha[5]);
     return ret;
 }
 
-std::array<uint8_t, 42> generate_arp_frame(const haddr_t s_ha, const paddr_t s_pa, const paddr_t t_pa) {
+std::array<uint8_t, 42> generate_arp_frame(const haddr_arr s_ha, const paddr_arr s_pa, const paddr_arr t_pa) {
     std::array<uint8_t, 42> ret;
     uint8_t* data = ret.data();
-    const haddr_t t_ha = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+    const haddr_arr t_ha = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
     /* ethernet header */
     // broadcast
