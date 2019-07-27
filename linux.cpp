@@ -1,6 +1,7 @@
 #ifdef __linux__
 #include <arpa/inet.h>
 #include <ifaddrs.h>
+#include <linux/if_ether.h>
 #include <linux/if_packet.h>
 #include <net/if.h>
 #include <sys/socket.h>

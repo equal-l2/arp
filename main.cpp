@@ -13,6 +13,7 @@
 
 #ifdef __linux__
 #   include <linux/if_packet.h>
+#   include <linux/if_ether.h>
 #else
 #   include <net/bpf.h>
 #endif
