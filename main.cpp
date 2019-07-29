@@ -21,6 +21,24 @@
 #include "types.h"
 #include "common.h"
 
+int accept_arp_for(unsigned ms, int fd, size_t buf_len, haddr_arr my_haddr) {
+    auto start = std::chrono::steady_clock::now();
+    while(std::chrono::steady_clock::now()-start < std::chrono::milliseconds(ms)) {
+        auto ret = read_arp_resp(fd, buf_len);
+        if (!ret.has_value()) {
+            return -1;
+        }
+        for(arp a : *ret) {
+            if (a.t_ha == my_haddr) {
+                printf("%s : %s\n", format_haddr(a.s_ha).data(), format_paddr(a.s_pa).data());
+            }/* else {
+                printf("Wrong %s : %s\n", format_haddr(a.s_ha).data(), format_paddr(a.s_pa).data());
+                }*/
+        }
+    }
+    return 0;
+}
+
 int main(int argc, char** argv) {
     if (argc != 2) {
         fprintf(stderr, "%s [interface]\n", argv[0]);
@@ -94,37 +112,11 @@ int main(int argc, char** argv) {
 #else
             write(fd, generate_arp_frame(ap.haddr, am.addr, dst_addr).data(), 42);
 #endif
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
-            auto ret = read_arp_resp(fd, buf_len);
-            if (!ret.has_value()) {
-                return -1;
-            }
-            for(arp a : *ret) {
-                if (a.t_ha == ap.haddr) {
-                    printf("%s : %s\n", format_haddr(a.s_ha).data(), format_paddr(a.s_pa).data());
-                }/* else {
-                    printf("Wrong %s : %s\n", format_haddr(a.s_ha).data(), format_paddr(a.s_pa).data());
-                }*/
-            }
+            accept_arp_for(10, fd, buf_len, ap.haddr);
         }
     }
 
-    puts("[*] ARP requests sent, waiting replies for 5 seconds...");
-    auto start = std::chrono::steady_clock::now();
-    while(std::chrono::steady_clock::now() - start < std::chrono::seconds(5)) {
-        auto ret = read_arp_resp(fd, buf_len);
-        if (!ret.has_value()) {
-            return -1;
-        }
-        for(arp a : *ret) {
-            if (a.t_ha == ap.haddr) {
-                printf("%s : %s\n", format_haddr(a.s_ha).data(), format_paddr(a.s_pa).data());
-            }/* else {
-                printf("Wrong %s : %s\n", format_haddr(a.s_ha).data(), format_paddr(a.s_pa).data());
-            }*/
-        }
-    }
-
+    puts("[*] ARP requests sent, waiting replies for 3 seconds...");
+    accept_arp_for(3000, fd, buf_len, ap.haddr);
     close(fd);
 }
