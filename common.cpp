@@ -10,6 +10,13 @@
 #include "types.h"
 #include "common.h"
 
+paddr_arr ul2paddr(uint32_t paddr) {
+    const uint32_t in = ntohl(paddr);
+    paddr_arr ret;
+    memcpy(ret.data(), &in, PALEN);
+    return ret;
+}
+
 std::array<char, 16> format_paddr(paddr_arr pa) {
     std::array<char, 16> ret;
     sprintf(ret.data(), "%d.%d.%d.%d", pa[0], pa[1], pa[2], pa[3]);
@@ -103,3 +110,7 @@ std::optional<struct arp> extract_arp(const struct eth_hdr* eth) {
     return a;
 }
 
+uint32_t paddr2ul(paddr_arr paddr) {
+    const uint32_t ret = htonl(*((uint32_t*)paddr.data()));
+    return ret;
+}

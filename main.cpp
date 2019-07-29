@@ -71,18 +71,24 @@ int main(int argc, char** argv) {
 
 #endif
     for(addr_mask am : ap.paddrs) {
-        printf("[*] Sending an ARP request as %s\n", format_paddr(am.addr).data());
+        printf("[*] Start sending ARP requests as %s\n", format_paddr(am.addr).data());
 
         paddr_arr netaddr, bcastaddr;
-        for(int i = 0; i < PALEN; i++) {
+        for(unsigned i = 0; i < PALEN; i++) {
             netaddr[i] = am.addr[i] & am.mask[i];
             bcastaddr[i] = am.addr[i] | (~am.mask[i]);
         }
 
-        for(uint32_t i = htonl(*((uint32_t*)netaddr.data()))+1; i < htonl(*((uint32_t*)bcastaddr.data())); i++) {
-            uint32_t addr = ntohl(i);
-            paddr_arr dst_addr;
-            memcpy(dst_addr.data(), &addr, PALEN);
+        const uint32_t begin = paddr2ul(netaddr)+1;
+        const uint32_t end = paddr2ul(bcastaddr);
+        printf(
+            "[*] Send to IP from %s to %s (%d host(s))\n",
+            format_paddr(ul2paddr(begin)).data(),
+            format_paddr(ul2paddr(end-1)).data(),
+            end-begin
+        );
+        for(uint32_t i = begin; i < end; i++) {
+            paddr_arr dst_addr = ul2paddr(i);
 #ifdef __linux__
             sendto(fd, generate_arp_frame(ap.haddr, am.addr, dst_addr).data(), 42, 0, (struct sockaddr*)&sendaddr, sizeof(sendaddr));
 #else
