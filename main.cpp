@@ -94,7 +94,7 @@ int main(int argc, char** argv) {
 #else
             write(fd, generate_arp_frame(ap.haddr, am.addr, dst_addr).data(), 42);
 #endif
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
             auto ret = read_arp_resp(fd, buf_len);
             if (!ret.has_value()) {
@@ -103,9 +103,9 @@ int main(int argc, char** argv) {
             for(arp a : *ret) {
                 if (a.t_ha == ap.haddr) {
                     printf("%s : %s\n", format_haddr(a.s_ha).data(), format_paddr(a.s_pa).data());
-                } else {
+                }/* else {
                     printf("Wrong %s : %s\n", format_haddr(a.s_ha).data(), format_paddr(a.s_pa).data());
-                }
+                }*/
             }
         }
     }
@@ -120,9 +120,9 @@ int main(int argc, char** argv) {
         for(arp a : *ret) {
             if (a.t_ha == ap.haddr) {
                 printf("%s : %s\n", format_haddr(a.s_ha).data(), format_paddr(a.s_pa).data());
-            }  else {
+            }/* else {
                 printf("Wrong %s : %s\n", format_haddr(a.s_ha).data(), format_paddr(a.s_pa).data());
-            }
+            }*/
         }
     }
 
