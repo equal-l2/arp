@@ -7,10 +7,16 @@
 #include <netinet/in.h>
 #include <net/ethernet.h>
 
+#ifdef __linux__
+#define OCTET(ethaddr) (ethaddr).ether_addr_octet
+#else
+#define OCTET(ethaddr) (ethaddr).octet
+#endif
+
 constexpr size_t IP_ADDR_LEN = sizeof(in_addr_t);
 
 inline bool operator==(const ether_addr& lhs, const ether_addr& rhs) {
-    return std::equal(std::begin(lhs.octet), std::end(lhs.octet), std::begin(rhs.octet));
+    return std::equal(std::begin(OCTET(lhs)), std::end(OCTET(lhs)), std::begin(OCTET(rhs)));
 }
 
 struct eth_hdr {

@@ -3,17 +3,17 @@
 // or break build on FreeBSD
 
 #include <arpa/inet.h>
-#include <net/if_arp.h>
-#include <net/if_dl.h>
 #include <ifaddrs.h>
+#include <net/if.h>
+#include <net/if_arp.h>
+#include <unistd.h>
 
 #ifdef __linux__
 #else
 #include <fcntl.h>
 #include <net/bpf.h>
-#include <net/if.h>
+#include <net/if_dl.h>
 #include <sys/ioctl.h>
-#include <unistd.h>
 #endif
 
 #include <cstdio>
@@ -85,7 +85,7 @@ std::array<char, 16> format_paddr(in_addr pa) {
 
 std::array<char, 18> format_haddr(ether_addr ha) {
     std::array<char, 18> ret;
-    auto haoct = ha.octet;
+    auto haoct = OCTET(ha);
     sprintf(ret.data(), "%02x:%02x:%02x:%02x:%02x:%02x", haoct[0], haoct[1], haoct[2], haoct[3], haoct[4], haoct[5]);
     return ret;
 }
@@ -97,11 +97,11 @@ std::array<uint8_t, 42> generate_arp_frame(const ether_addr s_ha, const in_addr 
 
     /* ethernet header */
     // broadcast
-    memcpy(data, t_ha.octet, ETHER_ADDR_LEN);
+    memcpy(data, OCTET(t_ha), ETHER_ADDR_LEN);
     data += ETHER_ADDR_LEN;
 
     // own mac address
-    memcpy(data, s_ha.octet, ETHER_ADDR_LEN);
+    memcpy(data, OCTET(s_ha), ETHER_ADDR_LEN);
     data += ETHER_ADDR_LEN;
 
     // ethertype
@@ -129,7 +129,7 @@ std::array<uint8_t, 42> generate_arp_frame(const ether_addr s_ha, const in_addr 
     data += 2;
 
     // s_ha
-    memcpy(data, s_ha.octet, ETHER_ADDR_LEN);
+    memcpy(data, OCTET(s_ha), ETHER_ADDR_LEN);
     data += ETHER_ADDR_LEN;
 
     // s_pa
@@ -137,7 +137,7 @@ std::array<uint8_t, 42> generate_arp_frame(const ether_addr s_ha, const in_addr 
     data += IP_ADDR_LEN;
 
     // t_ha
-    memcpy(data, t_ha.octet, ETHER_ADDR_LEN);
+    memcpy(data, OCTET(t_ha), ETHER_ADDR_LEN);
     data += ETHER_ADDR_LEN;
 
     // s_pa
@@ -162,7 +162,11 @@ std::optional<addrs> get_addr_pair(const char* ifname) {
         if (strcmp(ifname, it->ifa_name) == 0) {
             struct sockaddr* sa = it->ifa_addr;
             switch (sa->sa_family) {
+#ifdef __linux__
+                case AF_PACKET:
+#else
                 case AF_LINK:
+#endif
                     {
                         if (!h_found) {
 #ifdef __linux__
@@ -170,7 +174,7 @@ std::optional<addrs> get_addr_pair(const char* ifname) {
 #else
                             uint8_t* a = (uint8_t*)LLADDR((struct sockaddr_dl*)sa);
 #endif
-                            memcpy(ap.haddr.octet, a, ETHER_ADDR_LEN);
+                            memcpy(OCTET(ap.haddr), a, ETHER_ADDR_LEN);
                             h_found = true;
                         }
                         break;
@@ -265,9 +269,9 @@ std::optional<struct arp> extract_arp(const struct eth_hdr* eth) {
     a.hlen = *(payload+4);
     a.plen = *(payload+5);
     a.op = ntohs(*((const uint16_t*)(payload+6)));
-    memcpy(a.s_ha.octet, payload+8, ETHER_ADDR_LEN);
+    memcpy(OCTET(a.s_ha), payload+8, ETHER_ADDR_LEN);
     memcpy(&a.s_pa.s_addr, payload+14, IP_ADDR_LEN);
-    memcpy(a.t_ha.octet, payload+18, ETHER_ADDR_LEN);
+    memcpy(OCTET(a.t_ha), payload+18, ETHER_ADDR_LEN);
     memcpy(&a.t_pa.s_addr, payload+24, IP_ADDR_LEN);
 
     return a;
