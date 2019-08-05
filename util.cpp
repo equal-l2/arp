@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #ifdef __linux__
+#include <linux/if_packet.h>
 #else
 #include <fcntl.h>
 #include <net/bpf.h>

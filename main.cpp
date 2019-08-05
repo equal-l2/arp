@@ -1,11 +1,11 @@
 #include <arpa/inet.h>
-#include <sys/errno.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
 
 #include <array>
+#include <cerrno>
 #include <chrono>
 #include <cstring> // memcpy
 #include <optional>
@@ -81,8 +81,8 @@ int main(int argc, char** argv) {
     sendaddr.sll_ifindex = ifr.ifr_ifindex;
     sendaddr.sll_hatype = 0;
     sendaddr.sll_pkttype = 0;
-    sendaddr.sll_halen = HALEN;
-    memcpy(sendaddr.sll_addr, ap.haddr.data(), HALEN);
+    sendaddr.sll_halen = ETHER_ADDR_LEN;
+    memcpy(sendaddr.sll_addr, OCTET(ap.haddr), ETHER_ADDR_LEN);
 
     struct sockaddr_ll recvaddr = sendaddr;
     recvaddr.sll_pkttype = 0;
