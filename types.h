@@ -1,19 +1,21 @@
 #pragma once
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <optional>
 #include <vector>
+#include <netinet/in.h>
+#include <net/ethernet.h>
 
-constexpr uint16_t ETH_TYPE_ARP = 0x0806;
-constexpr uint8_t HALEN = 6;
-constexpr uint8_t PALEN = 4;
+constexpr size_t IP_ADDR_LEN = sizeof(in_addr_t);
 
-using haddr_arr = std::array<uint8_t, HALEN>;
-using paddr_arr = std::array<uint8_t, PALEN>;
+inline bool operator==(const ether_addr& lhs, const ether_addr& rhs) {
+    return std::equal(std::begin(lhs.octet), std::end(lhs.octet), std::begin(rhs.octet));
+}
 
 struct eth_hdr {
-    uint8_t dhost[6];
-    uint8_t shost[6];
+    uint8_t dhost[ETHER_ADDR_LEN];
+    uint8_t shost[ETHER_ADDR_LEN];
     uint16_t ether_type;
 };
 
@@ -23,22 +25,14 @@ struct arp {
     uint8_t hlen;
     uint8_t plen;
     uint16_t op;
-    haddr_arr s_ha;
-    paddr_arr s_pa;
-    haddr_arr t_ha;
-    paddr_arr t_pa;
+    ether_addr s_ha;
+    in_addr s_pa;
+    ether_addr t_ha;
+    in_addr t_pa;
 };
 
-struct arp_frame {
-    uint8_t payload[42];
-};
-
-struct addr_mask {
-    paddr_arr addr;
-    paddr_arr mask;
-};
-
-struct addr_pair {
-    haddr_arr haddr;
-    std::vector<addr_mask> paddrs;
+struct addrs {
+    ether_addr haddr;
+    in_addr paddr;
+    in_addr mask;
 };

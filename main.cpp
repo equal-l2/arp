@@ -19,9 +19,9 @@
 #endif
 
 #include "types.h"
-#include "common.h"
+#include "util.h"
 
-int accept_arp_for(unsigned ms, int fd, size_t buf_len, haddr_arr my_haddr) {
+int accept_arp_for(unsigned ms, int fd, size_t buf_len, ether_addr my_haddr) {
     auto start = std::chrono::steady_clock::now();
     while(std::chrono::steady_clock::now()-start < std::chrono::milliseconds(ms)) {
         auto ret = read_arp_resp(fd, buf_len);
@@ -60,11 +60,12 @@ int main(int argc, char** argv) {
     }
 #endif
 
-    const struct addr_pair ap = get_addr_pair(argv[1]);
-    if (ap.paddrs.empty()) {
-        fprintf(stderr, "INET addr not assigned to \"%s\"", argv[1]);
+    auto ap_opt = get_addr_pair(argv[1]);
+    if (!ap_opt) {
+        fprintf(stderr, "Some addresses are not assigned to \"%s\"", argv[1]);
         return -1;
     }
+    auto ap = *ap_opt;
 
     printf("Host MAC address : %s\n", format_haddr(ap.haddr).data());
 #ifdef __linux__
@@ -88,32 +89,30 @@ int main(int argc, char** argv) {
     recvaddr.sll_protocol = htons(ETH_P_ARP);
 
 #endif
-    for(addr_mask am : ap.paddrs) {
-        printf("[*] Start sending ARP requests as %s\n", format_paddr(am.addr).data());
+    printf("[*] Start sending ARP requests as %s\n", format_paddr(ap.paddr).data());
 
-        paddr_arr netaddr, bcastaddr;
-        for(unsigned i = 0; i < PALEN; i++) {
-            netaddr[i] = am.addr[i] & am.mask[i];
-            bcastaddr[i] = am.addr[i] | (~am.mask[i]);
-        }
+    const auto paddr = ap.paddr.s_addr;
+    const auto mask = ap.mask.s_addr;
 
-        const uint32_t begin = paddr2ul(netaddr)+1;
-        const uint32_t end = paddr2ul(bcastaddr);
-        printf(
-            "[*] Send to IP from %s to %s (%d host(s))\n",
-            format_paddr(ul2paddr(begin)).data(),
-            format_paddr(ul2paddr(end-1)).data(),
+    const auto netaddr = paddr & mask;
+    const auto bcastaddr = paddr | (~mask);
+
+    const auto begin = ntohl(netaddr)+1;
+    const auto end = ntohl(bcastaddr);
+    printf(
+            "[*] Send to IP between %s and %s (%d host(s))\n",
+            format_paddr({htonl(begin)}).data(),
+            format_paddr({htonl(end-1)}).data(),
             end-begin
-        );
-        for(uint32_t i = begin; i < end; i++) {
-            paddr_arr dst_addr = ul2paddr(i);
+          );
+    for(uint32_t i = begin; i < end; i++) {
+        const in_addr addr = {htonl(i)};
 #ifdef __linux__
-            sendto(fd, generate_arp_frame(ap.haddr, am.addr, dst_addr).data(), 42, 0, (struct sockaddr*)&sendaddr, sizeof(sendaddr));
+        sendto(fd, generate_arp_frame(ap.haddr, ap.paddr, addr).data(), 42, 0, (struct sockaddr*)&sendaddr, sizeof(sendaddr));
 #else
-            write(fd, generate_arp_frame(ap.haddr, am.addr, dst_addr).data(), 42);
+        write(fd, generate_arp_frame(ap.haddr, ap.paddr, addr).data(), 42);
 #endif
-            accept_arp_for(10, fd, buf_len, ap.haddr);
-        }
+        accept_arp_for(10, fd, buf_len, ap.haddr);
     }
 
     puts("[*] ARP requests sent, waiting replies for 3 seconds...");
