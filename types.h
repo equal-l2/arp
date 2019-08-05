@@ -1,21 +1,12 @@
 #pragma once
+#include <net/ethernet.h>
+#include <netinet/in.h>
+
 #include <algorithm>
 #include <array>
 #include <cstdint>
 #include <optional>
 #include <vector>
-#include <netinet/in.h>
-
-#if __has_include(<net/ethernet.h>)
-#include <net/ethernet.h>
-#else
-constexpr size_t ETHER_ADDR_LEN = 6;
-constexpr uint16_t ETHERTYPE_ARP = 0x0806;
-constexpr uint16_t ETHERTYPE_IP = 0x0800;
-struct ether_addr {
-    uint8_t octet[ETHER_ADDR_LEN];
-};
-#endif
 
 #ifdef __linux__
 #define OCTET(ethaddr) (ethaddr).ether_addr_octet

@@ -20,3 +20,5 @@ LinuxのRaw Socketに特定のインタフェースを紐付ける方法
 https://stackoverflow.com/questions/3998569/how-to-bind-raw-socket-to-specific-interface
 
 IPv6が動いてるとうまく行かないことがある？(ipv6.disable_ipv6=1で快適に)
+
+macOS、FreeBSD、DragonFly BSD、Linuxで動作
