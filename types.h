@@ -1,5 +1,14 @@
 #pragma once
-#include <net/ethernet.h>
+
+#ifdef __OpenBSD__
+constexpr size_t ETHER_ADDR_LEN = 6;
+struct ether_addr {
+    uint8_t octet[ETHER_ADDR_LEN];
+};
+#else
+#   include <net/ethernet.h>
+#endif
+
 #include <netinet/in.h>
 
 #include <algorithm>
@@ -9,9 +18,9 @@
 #include <vector>
 
 #ifdef __linux__
-#define OCTET(ethaddr) (ethaddr).ether_addr_octet
+#   define OCTET(ethaddr) (ethaddr).ether_addr_octet
 #else
-#define OCTET(ethaddr) (ethaddr).octet
+#   define OCTET(ethaddr) (ethaddr).octet
 #endif
 
 constexpr size_t IP_ADDR_LEN = sizeof(in_addr_t);

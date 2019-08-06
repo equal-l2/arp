@@ -21,10 +21,11 @@
 #include "types.h"
 #include "util.h"
 
-int accept_arp_for(unsigned ms, int fd, size_t buf_len, ether_addr my_haddr) {
-    auto start = std::chrono::steady_clock::now();
+// 一定時間ソケットを読んでARPレスポンスがあれば表示する
+int accept_arp_for(unsigned ms, int fd, uint8_t* buf, size_t buf_len, ether_addr my_haddr) {
+    const auto start = std::chrono::steady_clock::now();
     while(std::chrono::steady_clock::now()-start < std::chrono::milliseconds(ms)) {
-        auto ret = read_arp_resp(fd, buf_len);
+        const auto ret = read_arp_resp(fd, buf, buf_len);
         if (!ret.has_value()) {
             return -1;
         }
@@ -38,6 +39,25 @@ int accept_arp_for(unsigned ms, int fd, size_t buf_len, ether_addr my_haddr) {
     }
     return 0;
 }
+
+#ifdef __linux__
+struct sockaddr_ll configure_sockaddr(const char* ifname, int fd, ether_addr haddr) {
+    struct ifreq ifr;
+    strncpy(ifr.ifr_name, ifname, IFNAMSIZ);
+    if (ioctl(fd, SIOCGIFINDEX, &ifr) == -1) {
+        perror("ioctl");
+        return -1;
+    }
+    struct sockaddr_ll sendaddr;
+    sendaddr.sll_family = AF_PACKET;
+    sendaddr.sll_protocol = htons(ETH_P_ARP);
+    sendaddr.sll_ifindex = ifr.ifr_ifindex;
+    sendaddr.sll_hatype = 0;
+    sendaddr.sll_pkttype = 0;
+    sendaddr.sll_halen = ETHER_ADDR_LEN;
+    memcpy(sendaddr.sll_addr, OCTET(haddr), ETHER_ADDR_LEN);
+}
+#endif
 
 int main(int argc, char** argv) {
     if (argc != 2) {
@@ -53,6 +73,8 @@ int main(int argc, char** argv) {
 #ifdef __linux__
     unsigned buf_len = 4096;
 #else
+    // バッファ長取得
+    // BPFは指定された長さのバッファを使わなければならない
     unsigned buf_len;
     if (ioctl(fd, BIOCGBLEN, &buf_len) == -1) {
         perror("ioctl");
@@ -60,34 +82,18 @@ int main(int argc, char** argv) {
     }
 #endif
 
-    auto ap_opt = get_addr_pair(argv[1]);
+    // 自身のMACアドレスとIPアドレスを取得する
+    const auto ap_opt = get_addr_pair(argv[1]);
     if (!ap_opt) {
         fprintf(stderr, "Some addresses are not assigned to \"%s\"", argv[1]);
         return -1;
     }
-    auto ap = *ap_opt;
+    const auto ap = *ap_opt;
 
     printf("Host MAC address : %s\n", format_haddr(ap.haddr).data());
 #ifdef __linux__
-    struct ifreq ifr;
-    strncpy(ifr.ifr_name, argv[1], IFNAMSIZ);
-    if (ioctl(fd, SIOCGIFINDEX, &ifr) == -1) {
-        perror("ioctl");
-        return -1;
-    }
-    struct sockaddr_ll sendaddr;
-    sendaddr.sll_family = AF_PACKET;
-    sendaddr.sll_protocol = htons(ETH_P_ARP);
-    sendaddr.sll_ifindex = ifr.ifr_ifindex;
-    sendaddr.sll_hatype = 0;
-    sendaddr.sll_pkttype = 0;
-    sendaddr.sll_halen = ETHER_ADDR_LEN;
-    memcpy(sendaddr.sll_addr, OCTET(ap.haddr), ETHER_ADDR_LEN);
-
-    struct sockaddr_ll recvaddr = sendaddr;
-    recvaddr.sll_pkttype = 0;
-    recvaddr.sll_protocol = htons(ETH_P_ARP);
-
+    // Linuxのsendtoで使うsockaddr構造体を用意する
+    const struct sockaddr_ll sendaddr = configure_sockaddr(argv[1], fd, ap.haddr);
 #endif
     printf("[*] Start sending ARP requests as %s\n", format_paddr(ap.paddr).data());
 
@@ -105,17 +111,20 @@ int main(int argc, char** argv) {
             format_paddr({htonl(end-1)}).data(),
             end-begin
           );
+
+    auto buf = new uint8_t[buf_len];
+
     for(uint32_t i = begin; i < end; i++) {
         const in_addr addr = {htonl(i)};
 #ifdef __linux__
-        sendto(fd, generate_arp_frame(ap.haddr, ap.paddr, addr).data(), 42, 0, (struct sockaddr*)&sendaddr, sizeof(sendaddr));
+        sendto(fd, generate_arp_frame(ap.haddr, ap.paddr, addr).data(), 42, 0, (const struct sockaddr*)&sendaddr, sizeof(sendaddr));
 #else
         write(fd, generate_arp_frame(ap.haddr, ap.paddr, addr).data(), 42);
 #endif
-        accept_arp_for(10, fd, buf_len, ap.haddr);
+        accept_arp_for(10, fd, buf, buf_len, ap.haddr);
     }
 
     puts("[*] ARP requests sent, waiting replies for 3 seconds...");
-    accept_arp_for(3000, fd, buf_len, ap.haddr);
+    accept_arp_for(3000, fd, buf, buf_len, ap.haddr);
     close(fd);
 }

@@ -1,4 +1,4 @@
-CXXFLAGS ?= -std=c++17
+CXXFLAGS ?= -std=c++17 -fsanitize=address,undefined
 arpscan: util.o main.o 
 	$(CXX) $^ -o $@ $(CXXFLAGS)
 
