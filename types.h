@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef __OpenBSD__
+#if defined(__OpenBSD__) || defined(__NetBSD__)
 constexpr size_t ETHER_ADDR_LEN = 6;
 constexpr uint16_t ETHERTYPE_ARP = 0x0806;
 constexpr uint16_t ETHERTYPE_IP = 0x0800;
