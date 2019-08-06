@@ -1,5 +1,5 @@
-CXXFLAGS ?= -std=c++17 -fsanitize=address,undefined
-arpscan: util.o main.o 
+CXXFLAGS ?= -std=c++17
+arpscan: util.o main.o
 	$(CXX) $^ -o $@ $(CXXFLAGS)
 
 %.cpp: types.h

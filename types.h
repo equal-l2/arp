@@ -2,6 +2,8 @@
 
 #ifdef __OpenBSD__
 constexpr size_t ETHER_ADDR_LEN = 6;
+constexpr uint16_t ETHERTYPE_ARP = 0x0806;
+constexpr uint16_t ETHERTYPE_IP = 0x0800;
 struct ether_addr {
     uint8_t octet[ETHER_ADDR_LEN];
 };
