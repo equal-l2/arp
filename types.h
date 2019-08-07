@@ -1,5 +1,10 @@
 #pragma once
 
+#ifdef __OpenBSD__
+#   include <net/if_arp.h>
+#endif
+
+#include <sys/socket.h>
 #include <netinet/if_ether.h>
 #include <netinet/in.h>
 
