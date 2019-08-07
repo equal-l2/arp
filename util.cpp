@@ -6,17 +6,18 @@
 #include <ifaddrs.h>
 #include <net/if.h>
 #include <net/if_arp.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 
 #if defined(__linux__)
 #   include <linux/if_packet.h>
 #elif defined(__sun)
 #   include <netpacket/packet.h>
+#   include <sys/sockio.h>
 #else
 #   include <fcntl.h>
 #   include <net/bpf.h>
 #   include <net/if_dl.h>
-#   include <sys/ioctl.h>
 #endif
 
 #include <cstdio>
@@ -48,7 +49,7 @@ int sock_open(const char* ifname) {
     memset(&sa, 0, sizeof(sa));
     sa.sll_family = PF_PACKET;
     sa.sll_ifindex = if_nametoindex(ifname);
-    if (bind(sockaddr, (const struct sockaddr*)sa, sizeof(sa)) == -1) {
+    if (bind(sockfd, (const struct sockaddr*)sa, sizeof(sa)) == -1) {
         close(sockfd);
         perror("bind");
         return -1;
@@ -167,19 +168,19 @@ std::optional<addrs> get_addr_pair(int sockfd) {
         perror("ioctl");
         return std::nullopt;
     }
-    memcpy(OCTET(ap.haddr), (const struct sockaddr_ll)(ifr.ifr_addr).sll_addr, ETHER_ADDR_LEN);
+    memcpy(OCTET(ap.haddr), ((const struct sockaddr_ll)ifr.ifr_addr).sll_addr, ETHER_ADDR_LEN);
 
     if (ioctl(sockfd, SIOCGIFADDR, &ifr) == -1) {
         perror("ioctl");
         return std::nullopt;
     }
-    ap.paddr = (const struct sockaddr_in)(ifr.ifr_addr).sin_addr;
+    ap.paddr = ((const struct sockaddr_in)ifr.ifr_addr).sin_addr;
 
     if (ioctl(sockfd, SIOCGIFNETMASK, &ifr) == -1) {
         perror("ioctl");
         return std::nullopt;
     }
-    ap.mask = (const struct sockaddr_in)(ifr.ifr_addr).sin_addr;
+    ap.mask = ((const struct sockaddr_in)ifr.ifr_addr).sin_addr;
 #else
     // インタフェース名を取得する
     if (ioctl(sockfd, BIOCGETIF, &ifr) == -1) {
