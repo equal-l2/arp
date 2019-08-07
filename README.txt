@@ -21,4 +21,4 @@ https://stackoverflow.com/questions/3998569/how-to-bind-raw-socket-to-specific-i
 
 IPv6が動いてるとうまく行かないことがある？(ipv6.disable_ipv6=1で快適に)
 
-macOS、FreeBSD、DragonFly BSD、Linuxで動作
+macOS、FreeBSD、DragonFly BSD、OpenBSD、Linuxで動作

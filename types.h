@@ -1,16 +1,6 @@
 #pragma once
 
-#if defined(__OpenBSD__) || defined(__NetBSD__)
-constexpr size_t ETHER_ADDR_LEN = 6;
-constexpr uint16_t ETHERTYPE_ARP = 0x0806;
-constexpr uint16_t ETHERTYPE_IP = 0x0800;
-struct ether_addr {
-    uint8_t octet[ETHER_ADDR_LEN];
-};
-#else
-#   include <net/ethernet.h>
-#endif
-
+#include <netinet/if_ether.h>
 #include <netinet/in.h>
 
 #include <algorithm>
@@ -19,10 +9,10 @@ struct ether_addr {
 #include <optional>
 #include <vector>
 
-#ifdef __linux__
-#   define OCTET(ethaddr) (ethaddr).ether_addr_octet
-#else
+#if defined(__DragonFly__) || defined(__FreeBSD__) || defined(__APPLE__)
 #   define OCTET(ethaddr) (ethaddr).octet
+#else
+#   define OCTET(ethaddr) (ethaddr).ether_addr_octet
 #endif
 
 constexpr size_t IP_ADDR_LEN = sizeof(in_addr_t);

@@ -70,7 +70,7 @@ int sock_open(const char* ifname) {
     struct ifreq ifr;
 
     // BPFデバイスにインタフェースを紐づける
-    strcpy(ifr.ifr_name, ifname); 
+    strcpy(ifr.ifr_name, ifname);
     if (ioctl(sockfd, BIOCSETIF, &ifr) == -1) {
         perror("ioctl");
         return -1;
