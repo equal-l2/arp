@@ -38,20 +38,19 @@ int sock_open(const char* ifname) {
         return -1;
     }
 
-    // ソケットにインタフェースを紐付ける
-    const int len = strlen(ifname);
-    if (len >= IFNAMSIZ) {
-        fprintf(stderr, "setsockopt: ifname is too long\n");
-        return -1;
+    int ifindex;
+    if ((ifindex = if_nametoindex(ifname)) == 0) {
+        perror("if_nametoindex");
+	return -1;
     }
-
     struct sockaddr_ll sa;
     memset(&sa, 0, sizeof(sa));
-    sa.sll_family = PF_PACKET;
-    sa.sll_ifindex = if_nametoindex(ifname);
+    sa.sll_family = AF_PACKET;
+    sa.sll_protocol = htons(ETH_P_ALL);
+    sa.sll_ifindex = ifindex;
     if (bind(sockfd, (const struct sockaddr*)&sa, sizeof(sa)) == -1) {
-        close(sockfd);
         perror("bind");
+        close(sockfd);
         return -1;
     }
 #else
@@ -170,7 +169,11 @@ std::optional<addrs> get_addr_pair(int sockfd, const char* ifname) {
         perror("ioctl");
         return std::nullopt;
     }
+#   ifdef __linux__
     memcpy(OCTET(ap.haddr), &ifr.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
+#   else
+    memcpy(OCTET(ap.haddr), &ifr.ifr_enaddr, ETHER_ADDR_LEN);
+#   endif
 
     if (ioctl(sockfd, SIOCGIFADDR, &ifr) == -1) {
         puts("ADDR");

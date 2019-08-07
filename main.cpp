@@ -1,8 +1,6 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <net/if.h>
-#include <sys/ioctl.h>
 
 #include <array>
 #include <cerrno>
@@ -11,10 +9,15 @@
 #include <optional>
 #include <thread>
 
-#ifdef __linux__
+#if defined(__linux__)
 #   include <linux/if_packet.h>
 #   include <linux/if_ether.h>
+#   include <net/if.h>
+#elif defined(__sun)
+#   include <netpacket/packet.h>
+#   include <net/if.h>
 #else
+#   include <sys/ioctl.h>
 #   include <net/bpf.h>
 #endif
 
@@ -42,16 +45,16 @@ int accept_arp_for(unsigned ms, int sockfd, uint8_t* buf, size_t buf_len, ether_
 
 #if defined(__linux__) || defined(__sun)
 struct sockaddr_ll configure_sockaddr(const char* ifname, int sockfd, ether_addr haddr) {
-    struct ifreq ifr;
-    strncpy(ifr.ifr_name, ifname, IFNAMSIZ);
-    if (ioctl(sockfd, SIOCGIFINDEX, &ifr) == -1) {
-        perror("ioctl");
+    int ifindex;
+    if ((ifindex = if_nametoindex(ifname)) == 0) {
+        perror("if_nametoindex");
         exit(-1);
     }
+
     struct sockaddr_ll sendaddr;
     sendaddr.sll_family = AF_PACKET;
     sendaddr.sll_protocol = htons(ETH_P_ARP);
-    sendaddr.sll_ifindex = ifr.ifr_ifindex;
+    sendaddr.sll_ifindex = ifindex;
     sendaddr.sll_hatype = 0;
     sendaddr.sll_pkttype = 0;
     sendaddr.sll_halen = ETHER_ADDR_LEN;

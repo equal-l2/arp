@@ -1,7 +1,11 @@
 CXXFLAGS += -std=c++17
 
+ifeq ($(shell uname -s), SunOS)
+    LDFLAGS += -lsocket
+endif
+
 arpscan: util.o main.o
-	$(CXX) $^ -o $@ $(CXXFLAGS)
+	$(CXX) $^ -o $@ $(CXXFLAGS) $(LDFLAGS)
 
 %.cpp: types.h
 
