@@ -40,7 +40,7 @@ int accept_arp_for(unsigned ms, int fd, uint8_t* buf, size_t buf_len, ether_addr
     return 0;
 }
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__sun)
 struct sockaddr_ll configure_sockaddr(const char* ifname, int fd, ether_addr haddr) {
     struct ifreq ifr;
     strncpy(ifr.ifr_name, ifname, IFNAMSIZ);
@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__sun)
     unsigned buf_len = 4096;
 #else
     // バッファ長取得
@@ -85,14 +85,14 @@ int main(int argc, char** argv) {
     // 自身のMACアドレスとIPアドレスを取得する
     const auto ap_opt = get_addr_pair(argv[1]);
     if (!ap_opt) {
-        fprintf(stderr, "Some addresses are not assigned to \"%s\"", argv[1]);
+        fprintf(stderr, "Some addresses are not assigned to \"%s\"\n", argv[1]);
         return -1;
     }
     const auto ap = *ap_opt;
 
     printf("Host MAC address : %s\n", format_haddr(ap.haddr).data());
-#ifdef __linux__
-    // Linuxのsendtoで使うsockaddr構造体を用意する
+#if defined(__linux__) || defined(__sun)
+    // sendtoで使うsockaddr構造体を用意する
     const struct sockaddr_ll sendaddr = configure_sockaddr(argv[1], fd, ap.haddr);
 #endif
     printf("[*] Start sending ARP requests as %s\n", format_paddr(ap.paddr).data());
@@ -116,7 +116,7 @@ int main(int argc, char** argv) {
 
     for(uint32_t i = begin; i < end; i++) {
         const in_addr addr = {htonl(i)};
-#ifdef __linux__
+#if defined(__linux__) || defined(__sun)
         sendto(fd, generate_arp_frame(ap.haddr, ap.paddr, addr).data(), 42, 0, (const struct sockaddr*)&sendaddr, sizeof(sendaddr));
 #else
         write(fd, generate_arp_frame(ap.haddr, ap.paddr, addr).data(), 42);

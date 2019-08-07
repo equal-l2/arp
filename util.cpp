@@ -8,8 +8,10 @@
 #include <net/if_arp.h>
 #include <unistd.h>
 
-#ifdef __linux__
+#if defined(__linux__)
 #   include <linux/if_packet.h>
+#elif defined(__sun)
+#   include <netpacket/packet.h>
 #else
 #   include <fcntl.h>
 #   include <net/bpf.h>
@@ -26,7 +28,7 @@
 
 // パケットレベルの操作が可能なソケットを開く
 int sock_open(const char* ifname) {
-#ifdef __linux__
+#if defined(__linux__) || defined(__sun)
     /* Linux : パケットソケット */
     // RAWレベルのパケットソケットを開く
     const int sockfd = socket(AF_PACKET, SOCK_RAW | SOCK_NONBLOCK, htons(ETH_P_ALL));
@@ -50,10 +52,6 @@ int sock_open(const char* ifname) {
     /* BSD : BPF */
     // 空いているBPFデバイスを探す
 
-#   ifdef __sun
-    // SolarisではBPFデバイスは /dev/bpf の一つのみ
-    sockfd = open("/dev/bpf", O_RDWR, O_NONBLOCK);
-#   else
     char device[sizeof("/dev/bpf0000")];
     int sockfd = -1;
     for (int i = 0; i < 10000; i++) {
@@ -65,7 +63,6 @@ int sock_open(const char* ifname) {
         }
         else break;
     }
-#   endif
 
     if (sockfd == -1) {
         perror("open");
@@ -171,14 +168,14 @@ std::optional<addrs> get_addr_pair(const char* ifname) {
         if (strcmp(ifname, it->ifa_name) == 0) {
             struct sockaddr* sa = it->ifa_addr;
             switch (sa->sa_family) {
-#ifdef __linux__
+#if defined(__linux__) || defined(__sun)
                 case AF_PACKET:
 #else
                 case AF_LINK:
 #endif
                     {
                         if (!h_found) {
-#ifdef __linux__
+#if defined(__linux__) || defined(__sun)
                             const uint8_t* a = ((const struct sockaddr_ll*)sa)->sll_addr;
 #else
                             const auto a = (const uint8_t*)LLADDR((const struct sockaddr_dl*)sa);
@@ -213,7 +210,7 @@ std::optional<addrs> get_addr_pair(const char* ifname) {
 
 std::optional<std::vector<struct arp>> read_arp_resp(int fd, uint8_t* buf, size_t buflen) {
     std::vector<arp> ret;
-#ifdef __linux__
+#if defined(__linux__) || defined(__sun)
     const ssize_t len = recvfrom(fd, buf, buflen, 0, NULL, NULL);
 #else
     const ssize_t len = read(fd, buf, buflen);
@@ -240,7 +237,7 @@ std::optional<std::vector<struct arp>> read_arp_resp(int fd, uint8_t* buf, size_
         }
     }
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__sun)
     const auto eth = (struct eth_hdr*)buf;
     std::optional<struct arp> a = extract_arp(eth);
     if (a.has_value() && a->op == 2) {

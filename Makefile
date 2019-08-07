@@ -1,13 +1,7 @@
-UNAME = $(shell uname -s)
 CXXFLAGS += -std=c++17
 
-# On SunOS, libsocket is required for getifaddrs()
-ifeq ($(UNAME),SunOS)
-    LDFLAGS += -lsocket
-endif
-
 arpscan: util.o main.o
-	$(CXX) $^ -o $@ $(CXXFLAGS) $(LDFLAGS)
+	$(CXX) $^ -o $@ $(CXXFLAGS)
 
 %.cpp: types.h
 
