@@ -49,6 +49,11 @@ int sock_open(const char* ifname) {
 #else
     /* BSD : BPF */
     // 空いているBPFデバイスを探す
+
+#   ifdef __sun
+    // SolarisではBPFデバイスは /dev/bpf の一つのみ
+    sockfd = open("/dev/bpf", O_RDWR, O_NONBLOCK);
+#   else
     char device[sizeof("/dev/bpf0000")];
     int sockfd = -1;
     for (int i = 0; i < 10000; i++) {
@@ -60,6 +65,7 @@ int sock_open(const char* ifname) {
         }
         else break;
     }
+#   endif
 
     if (sockfd == -1) {
         perror("open");

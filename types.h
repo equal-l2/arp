@@ -9,13 +9,17 @@
 #include <optional>
 #include <vector>
 
+#if defined(__sun)
+#   define ETHER_ADDR_LEN ETHERADDRL
+#endif
+
 #if defined(__DragonFly__) || defined(__FreeBSD__) || defined(__APPLE__)
 #   define OCTET(ethaddr) (ethaddr).octet
 #else
 #   define OCTET(ethaddr) (ethaddr).ether_addr_octet
 #endif
 
-constexpr size_t IP_ADDR_LEN = sizeof(in_addr_t);
+#define IP_ADDR_LEN sizeof(in_addr_t)
 
 inline bool operator==(const ether_addr& lhs, const ether_addr& rhs) {
     return std::equal(std::begin(OCTET(lhs)), std::end(OCTET(lhs)), std::begin(OCTET(rhs)));
