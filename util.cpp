@@ -43,9 +43,14 @@ int sock_open(const char* ifname) {
         fprintf(stderr, "setsockopt: ifname is too long\n");
         return -1;
     }
-    if (setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, ifname, len) == -1) {
+
+    struct sockaddr_ll sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sll_family = PF_PACKET;
+    sa.sll_ifindex = if_nametoindex(ifname);
+    if (bind(sockaddr, (const struct sockaddr*)sa, sizeof(sa)) == -1) {
         close(sockfd);
-        perror("setsockopt");
+        perror("bind");
         return -1;
     }
 #else
@@ -153,33 +158,53 @@ std::array<uint8_t, 42> generate_arp_frame(const ether_addr s_ha, const in_addr 
     return ret;
 }
 
-std::optional<addrs> get_addr_pair(const char* ifname) {
+std::optional<addrs> get_addr_pair(int sockfd) {
+    struct addrs ap {};
+    struct ifreq ifr;
+
+#if defined(__linux__) || defined(__sun)
+    if (ioctl(sockfd, SIOCGIFHWADDR, &ifr) == -1) {
+        perror("ioctl");
+        return std::nullopt;
+    }
+    memcpy(OCTET(ap.haddr), (const struct sockaddr_ll)(ifr.ifr_addr).sll_addr, ETHER_ADDR_LEN);
+
+    if (ioctl(sockfd, SIOCGIFADDR, &ifr) == -1) {
+        perror("ioctl");
+        return std::nullopt;
+    }
+    ap.paddr = (const struct sockaddr_in)(ifr.ifr_addr).sin_addr;
+
+    if (ioctl(sockfd, SIOCGIFNETMASK, &ifr) == -1) {
+        perror("ioctl");
+        return std::nullopt;
+    }
+    ap.mask = (const struct sockaddr_in)(ifr.ifr_addr).sin_addr;
+#else
+    // インタフェース名を取得する
+    if (ioctl(sockfd, BIOCGETIF, &ifr) == -1) {
+        perror("ioctl");
+        return std::nullopt;
+    }
+    const char* ifname = ifr.ifr_name;
+
     struct ifaddrs* ifa;
     int ret = getifaddrs(&ifa);
     if(ret == -1) {
         perror("getifaddrs");
-        exit(1);
+        return std::nullopt;
     }
 
-    struct addrs ap {};
     bool h_found = false, p_found = false;
 
     for(struct ifaddrs* it = ifa; it != nullptr && !(h_found && p_found); it = it->ifa_next) {
         if (strcmp(ifname, it->ifa_name) == 0) {
             struct sockaddr* sa = it->ifa_addr;
             switch (sa->sa_family) {
-#if defined(__linux__) || defined(__sun)
-                case AF_PACKET:
-#else
                 case AF_LINK:
-#endif
                     {
                         if (!h_found) {
-#if defined(__linux__) || defined(__sun)
-                            const uint8_t* a = ((const struct sockaddr_ll*)sa)->sll_addr;
-#else
                             const auto a = (const uint8_t*)LLADDR((const struct sockaddr_dl*)sa);
-#endif
                             memcpy(OCTET(ap.haddr), a, ETHER_ADDR_LEN);
                             h_found = true;
                         }
@@ -202,10 +227,11 @@ std::optional<addrs> get_addr_pair(const char* ifname) {
 
     freeifaddrs(ifa);
 
-    if (h_found && p_found) {
-        return ap;
+    if (!h_found || !p_found) {
+        return std::nullopt;
     }
-    return std::nullopt;
+#endif
+    return ap;
 }
 
 std::optional<std::vector<struct arp>> read_arp_resp(int fd, uint8_t* buf, size_t buflen) {

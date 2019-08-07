@@ -83,7 +83,7 @@ int main(int argc, char** argv) {
 #endif
 
     // 自身のMACアドレスとIPアドレスを取得する
-    const auto ap_opt = get_addr_pair(argv[1]);
+    const auto ap_opt = get_addr_pair(fd);
     if (!ap_opt) {
         fprintf(stderr, "Some addresses are not assigned to \"%s\"\n", argv[1]);
         return -1;
