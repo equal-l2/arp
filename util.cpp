@@ -49,7 +49,7 @@ int sock_open(const char* ifname) {
     memset(&sa, 0, sizeof(sa));
     sa.sll_family = PF_PACKET;
     sa.sll_ifindex = if_nametoindex(ifname);
-    if (bind(sockfd, (const struct sockaddr*)sa, sizeof(sa)) == -1) {
+    if (bind(sockfd, (const struct sockaddr*)&sa, sizeof(sa)) == -1) {
         close(sockfd);
         perror("bind");
         return -1;
@@ -159,36 +159,34 @@ std::array<uint8_t, 42> generate_arp_frame(const ether_addr s_ha, const in_addr 
     return ret;
 }
 
-std::optional<addrs> get_addr_pair(int sockfd) {
+std::optional<addrs> get_addr_pair(int sockfd, const char* ifname) {
     struct addrs ap {};
-    struct ifreq ifr;
 
 #if defined(__linux__) || defined(__sun)
+    struct ifreq ifr;
+    strncpy(ifr.ifr_name, ifname, IFNAMSIZ);
+
     if (ioctl(sockfd, SIOCGIFHWADDR, &ifr) == -1) {
         perror("ioctl");
         return std::nullopt;
     }
-    memcpy(OCTET(ap.haddr), ((const struct sockaddr_ll)ifr.ifr_addr).sll_addr, ETHER_ADDR_LEN);
+    memcpy(OCTET(ap.haddr), &ifr.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
 
     if (ioctl(sockfd, SIOCGIFADDR, &ifr) == -1) {
+        puts("ADDR");
         perror("ioctl");
         return std::nullopt;
     }
-    ap.paddr = ((const struct sockaddr_in)ifr.ifr_addr).sin_addr;
+    ap.paddr = ((const struct sockaddr_in*)&ifr.ifr_addr)->sin_addr;
 
     if (ioctl(sockfd, SIOCGIFNETMASK, &ifr) == -1) {
+        puts("MASK");
         perror("ioctl");
         return std::nullopt;
     }
-    ap.mask = ((const struct sockaddr_in)ifr.ifr_addr).sin_addr;
+    ap.mask = ((const struct sockaddr_in*)&ifr.ifr_addr)->sin_addr;
 #else
     // インタフェース名を取得する
-    if (ioctl(sockfd, BIOCGETIF, &ifr) == -1) {
-        perror("ioctl");
-        return std::nullopt;
-    }
-    const char* ifname = ifr.ifr_name;
-
     struct ifaddrs* ifa;
     int ret = getifaddrs(&ifa);
     if(ret == -1) {
@@ -235,12 +233,12 @@ std::optional<addrs> get_addr_pair(int sockfd) {
     return ap;
 }
 
-std::optional<std::vector<struct arp>> read_arp_resp(int fd, uint8_t* buf, size_t buflen) {
+std::optional<std::vector<struct arp>> read_arp_resp(int sockfd, uint8_t* buf, size_t buflen) {
     std::vector<arp> ret;
 #if defined(__linux__) || defined(__sun)
-    const ssize_t len = recvfrom(fd, buf, buflen, 0, NULL, NULL);
+    const ssize_t len = recvfrom(sockfd, buf, buflen, 0, NULL, NULL);
 #else
-    const ssize_t len = read(fd, buf, buflen);
+    const ssize_t len = read(sockfd, buf, buflen);
 #endif
     if(len <= 0) {
         switch (len) {
