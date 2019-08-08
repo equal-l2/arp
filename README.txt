@@ -13,12 +13,17 @@ https://gist.github.com/qxj/5618237
 getifaddrsからMACアドレスを取得する方法
 https://stackoverflow.com/questions/6762766/mac-address-with-getifaddrs
 
-Linuxではsendtoを使わないとうまく動かない
+Raw socketではsendtoを使わないとうまく動かない
 https://stackoverflow.com/questions/16710040/arp-request-and-reply-using-c-socket-programming
 
-LinuxのRaw Socketに特定のインタフェースを紐付ける方法
+LinuxのRaw Socketに特定のインタフェースを紐付ける方法(SO_BINDTODEVICE)
 https://stackoverflow.com/questions/3998569/how-to-bind-raw-socket-to-specific-interface
+
+LinuxのRaw Socketに特定のインタフェースを紐づける方法(bind)
+https://plasmixs.github.io/raw-sockets-programming-in-c.html
 
 IPv6が動いてるとうまく行かないことがある？(ipv6.disable_ipv6=1で快適に)
 
 macOS、FreeBSD、DragonFly BSD、OpenBSD、Linuxで動作
+NetBSDはなんか上手くいかない
+//Solarisはbindでしくじる 対応中止

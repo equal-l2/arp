@@ -11,9 +11,6 @@
 
 #if defined(__linux__)
 #   include <linux/if_packet.h>
-#elif defined(__sun)
-#   include <netpacket/packet.h>
-#   include <sys/sockio.h>
 #else
 #   include <fcntl.h>
 #   include <net/bpf.h>
@@ -29,7 +26,7 @@
 
 // パケットレベルの操作が可能なソケットを開く
 int sock_open(const char* ifname) {
-#if defined(__linux__) || defined(__sun)
+#if defined(__linux__)
     /* Linux : パケットソケット */
     // RAWレベルのパケットソケットを開く
     const int sockfd = socket(AF_PACKET, SOCK_RAW | SOCK_NONBLOCK, htons(ETH_P_ALL));
@@ -41,7 +38,7 @@ int sock_open(const char* ifname) {
     int ifindex;
     if ((ifindex = if_nametoindex(ifname)) == 0) {
         perror("if_nametoindex");
-	return -1;
+        return -1;
     }
     struct sockaddr_ll sa;
     memset(&sa, 0, sizeof(sa));
@@ -161,7 +158,7 @@ std::array<uint8_t, 42> generate_arp_frame(const ether_addr s_ha, const in_addr 
 std::optional<addrs> get_addr_pair(int sockfd, const char* ifname) {
     struct addrs ap {};
 
-#if defined(__linux__) || defined(__sun)
+#if defined(__linux__)
     struct ifreq ifr;
     strncpy(ifr.ifr_name, ifname, IFNAMSIZ);
 
@@ -169,11 +166,7 @@ std::optional<addrs> get_addr_pair(int sockfd, const char* ifname) {
         perror("ioctl");
         return std::nullopt;
     }
-#   ifdef __linux__
     memcpy(OCTET(ap.haddr), &ifr.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
-#   else
-    memcpy(OCTET(ap.haddr), &ifr.ifr_enaddr, ETHER_ADDR_LEN);
-#   endif
 
     if (ioctl(sockfd, SIOCGIFADDR, &ifr) == -1) {
         puts("ADDR");
@@ -238,7 +231,7 @@ std::optional<addrs> get_addr_pair(int sockfd, const char* ifname) {
 
 std::optional<std::vector<struct arp>> read_arp_resp(int sockfd, uint8_t* buf, size_t buflen) {
     std::vector<arp> ret;
-#if defined(__linux__) || defined(__sun)
+#if defined(__linux__)
     const ssize_t len = recvfrom(sockfd, buf, buflen, 0, NULL, NULL);
 #else
     const ssize_t len = read(sockfd, buf, buflen);
@@ -265,7 +258,7 @@ std::optional<std::vector<struct arp>> read_arp_resp(int sockfd, uint8_t* buf, s
         }
     }
 
-#if defined(__linux__) || defined(__sun)
+#if defined(__linux__)
     const auto eth = (struct eth_hdr*)buf;
     std::optional<struct arp> a = extract_arp(eth);
     if (a.has_value() && a->op == 2) {

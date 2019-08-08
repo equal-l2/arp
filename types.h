@@ -14,10 +14,6 @@
 #include <optional>
 #include <vector>
 
-#if defined(__sun)
-#   define ETHER_ADDR_LEN ETHERADDRL
-#endif
-
 #if defined(__DragonFly__) || defined(__FreeBSD__) || defined(__APPLE__)
 #   define OCTET(ethaddr) (ethaddr).octet
 #else

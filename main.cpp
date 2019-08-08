@@ -13,9 +13,6 @@
 #   include <linux/if_packet.h>
 #   include <linux/if_ether.h>
 #   include <net/if.h>
-#elif defined(__sun)
-#   include <netpacket/packet.h>
-#   include <net/if.h>
 #else
 #   include <sys/ioctl.h>
 #   include <net/bpf.h>
@@ -43,7 +40,7 @@ int accept_arp_for(unsigned ms, int sockfd, uint8_t* buf, size_t buf_len, ether_
     return 0;
 }
 
-#if defined(__linux__) || defined(__sun)
+#if defined(__linux__)
 struct sockaddr_ll configure_sockaddr(const char* ifname, int sockfd, ether_addr haddr) {
     int ifindex;
     if ((ifindex = if_nametoindex(ifname)) == 0) {
@@ -74,7 +71,7 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-#if defined(__linux__) || defined(__sun)
+#if defined(__linux__)
     unsigned buf_len = 4096;
 #else
     // バッファ長取得
@@ -95,7 +92,7 @@ int main(int argc, char** argv) {
     const auto ap = *ap_opt;
 
     printf("Host MAC address : %s\n", format_haddr(ap.haddr).data());
-#if defined(__linux__) || defined(__sun)
+#if defined(__linux__)
     // sendtoで使うsockaddr構造体を用意する
     const struct sockaddr_ll sendaddr = configure_sockaddr(argv[1], sockfd, ap.haddr);
 #endif
@@ -120,7 +117,7 @@ int main(int argc, char** argv) {
 
     for(uint32_t i = begin; i < end; i++) {
         const in_addr addr = {htonl(i)};
-#if defined(__linux__) || defined(__sun)
+#if defined(__linux__)
         sendto(sockfd, generate_arp_frame(ap.haddr, ap.paddr, addr).data(), 42, 0, (const struct sockaddr*)&sendaddr, sizeof(sendaddr));
 #else
         write(sockfd, generate_arp_frame(ap.haddr, ap.paddr, addr).data(), 42);
