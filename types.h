@@ -1,16 +1,14 @@
 #pragma once
 
-#ifdef __OpenBSD__
-#   include <net/if_arp.h>
-#endif
+// These should be included at this point with the exact order
+#include <sys/socket.h> // required by the other header
+#include <netinet/in.h> // in_addr
+#include <net/if_arp.h> // required by the other header
 
-#include <netinet/if_ether.h>
-#include <netinet/in.h>
+#include <netinet/if_ether.h> // ether_addr
 
-#include <algorithm>
-#include <cstdint>
-#include <optional>
-#include <vector>
+#include <algorithm> // std::equal
+#include <cstdint> // uint8_t
 
 #if defined(__DragonFly__) || defined(__FreeBSD__) || defined(__APPLE__)
 #   define OCTET(ethaddr) (ethaddr).octet

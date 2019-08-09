@@ -1,6 +1,8 @@
 #pragma once
-#include "types.h"
 #include <array>
+#include <optional>
+#include <vector>
+#include "types.h"
 
 int sock_open(const char* dname);
 std::array<char, 16> format_paddr(in_addr pa);

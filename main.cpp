@@ -3,6 +3,7 @@
 #include <chrono> // std::chrono
 #include <cstring> // memcpy
 #include <optional> // std::optional
+#include <cstdio> // printf
 
 #if defined(__linux__)
 #   include <netpacket/packet.h> // sockaddr_ll
