@@ -1,17 +1,10 @@
-#include <arpa/inet.h>
-#include <sys/types.h>
 #include <unistd.h>
 
-#include <array>
-#include <cerrno>
 #include <chrono>
 #include <cstring> // memcpy
 #include <optional>
-#include <thread>
 
 #if defined(__linux__)
-#   include <linux/if_packet.h>
-#   include <linux/if_ether.h>
 #   include <net/if.h>
 #else
 #   include <sys/ioctl.h>
@@ -29,12 +22,12 @@ int accept_arp_for(unsigned ms, int sockfd, uint8_t* buf, size_t buf_len, ether_
         if (!ret.has_value()) {
             return -1;
         }
-        for(arp a : *ret) {
+        for(arp_type a : *ret) {
             if (a.t_ha == my_haddr) {
                 printf("%s : %s\n", format_haddr(a.s_ha).data(), format_paddr(a.s_pa).data());
             }/* else {
                 printf("Wrong %s : %s\n", format_haddr(a.s_ha).data(), format_paddr(a.s_pa).data());
-                }*/
+            }*/
         }
     }
     return 0;
@@ -117,11 +110,16 @@ int main(int argc, char** argv) {
 
     for(uint32_t i = begin; i < end; i++) {
         const in_addr addr = {htonl(i)};
+        const auto arp_frame = generate_arp_frame(ap.haddr, ap.paddr, addr).data();
 #if defined(__linux__)
-        sendto(sockfd, generate_arp_frame(ap.haddr, ap.paddr, addr).data(), 42, 0, (const struct sockaddr*)&sendaddr, sizeof(sendaddr));
+        const ssize_t ret = sendto(sockfd, arp_frame, 42, 0, (const struct sockaddr*)&sendaddr, sizeof(sendaddr));
 #else
-        write(sockfd, generate_arp_frame(ap.haddr, ap.paddr, addr).data(), 42);
+        const ssize_t ret = write(sockfd, arp_frame, 42);
 #endif
+        if (ret == -1) {
+            perror("sendto/write");
+            return -1;
+        }
         accept_arp_for(10, sockfd, buf, buf_len, ap.haddr);
     }
 

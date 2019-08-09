@@ -40,12 +40,12 @@ int sock_open(const char* ifname) {
         perror("if_nametoindex");
         return -1;
     }
-    struct sockaddr_ll sa;
+    sockaddr_ll sa;
     memset(&sa, 0, sizeof(sa));
     sa.sll_family = AF_PACKET;
     sa.sll_protocol = htons(ETH_P_ALL);
     sa.sll_ifindex = ifindex;
-    if (bind(sockfd, (const struct sockaddr*)&sa, sizeof(sa)) == -1) {
+    if (bind(sockfd, (const sockaddr*)&sa, sizeof(sa)) == -1) {
         perror("bind");
         close(sockfd);
         return -1;
@@ -54,16 +54,21 @@ int sock_open(const char* ifname) {
     /* BSD : BPF */
     // 空いているBPFデバイスを探す
 
-    char device[sizeof("/dev/bpf0000")];
+    const int flag = O_RDWR | O_NONBLOCK;
     int sockfd = -1;
-    for (int i = 0; i < 10000; i++) {
-        sprintf(device, "/dev/bpf%d", i);
-        sockfd = open(device, O_RDWR | O_NONBLOCK);
+    char device[sizeof("/dev/bpf000")];
+    sprintf(device, "/dev/bpf");
 
-        if (sockfd == -1 && errno == EBUSY) {
-            continue;
+    // まず /dev/bpf を試す
+    if ((sockfd = open(device, flag)) == -1) {
+        // なければ /dev/bpf0 ~ /dev/bpf999 を試す
+        for (int i = 0; i < 1000; i++) {
+            sprintf(device, "/dev/bpf%d", i);
+            sockfd = open(device, flag);
+
+            if (sockfd == -1 && errno == EBUSY) continue;
+            else break;
         }
-        else break;
     }
 
     if (sockfd == -1) {
@@ -72,7 +77,7 @@ int sock_open(const char* ifname) {
     }
     fprintf(stderr, "Opened BPF device %s\n", device);
 
-    struct ifreq ifr;
+    ifreq ifr;
 
     // BPFデバイスにインタフェースを紐づける
     strcpy(ifr.ifr_name, ifname);
@@ -101,65 +106,33 @@ std::array<char, 18> format_haddr(ether_addr ha) {
 std::array<uint8_t, 42> generate_arp_frame(const ether_addr s_ha, const in_addr s_pa, const in_addr t_pa) {
     std::array<uint8_t, 42> ret;
     uint8_t* data = ret.data();
-    const ether_addr t_ha = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+    auto eth = (ether_header*)data;
+    auto arp = (arp_type*)(data + sizeof(ether_header));
 
     /* ethernet header */
-    // broadcast
-    memcpy(data, OCTET(t_ha), ETHER_ADDR_LEN);
-    data += ETHER_ADDR_LEN;
-
-    // own mac address
-    memcpy(data, OCTET(s_ha), ETHER_ADDR_LEN);
-    data += ETHER_ADDR_LEN;
-
-    // ethertype
-    const uint16_t eth_type = htons(ETHERTYPE_ARP);
-    memcpy(data, &eth_type, 2);
-    data += 2;
+    memset(eth->ether_dhost, 0xff, ETHER_ADDR_LEN); // set dst to broadcast
+    memcpy(eth->ether_shost, OCTET(s_ha), ETHER_ADDR_LEN); // set src to myself
+    eth->ether_type = htons(ETHERTYPE_ARP);
 
     /* arp */
-    // htype = ethernet
-    const uint16_t htype = htons(ARPHRD_ETHER);
-    memcpy(data, &htype, 2);
-    data += 2;
-
-    // ptype = ipv4
-    const uint16_t ptype = htons(ETHERTYPE_IP);
-    memcpy(data, &ptype, 2);
-    data += 2;
-
-    *(data++) = ETHER_ADDR_LEN; // hlen
-    *(data++) = IP_ADDR_LEN; // plen
-
-    // op
-    const uint16_t op = htons(ARPOP_REQUEST);
-    memcpy(data, &op, 2);
-    data += 2;
-
-    // s_ha
-    memcpy(data, OCTET(s_ha), ETHER_ADDR_LEN);
-    data += ETHER_ADDR_LEN;
-
-    // s_pa
-    memcpy(data, &s_pa.s_addr, IP_ADDR_LEN);
-    data += IP_ADDR_LEN;
-
-    // t_ha
-    memcpy(data, OCTET(t_ha), ETHER_ADDR_LEN);
-    data += ETHER_ADDR_LEN;
-
-    // s_pa
-    memcpy(data, &t_pa.s_addr, IP_ADDR_LEN);
-    data += IP_ADDR_LEN;
+    arp->htype = htons(ARPHRD_ETHER);
+    arp->ptype = htons(ETHERTYPE_IP);
+    arp->hlen = ETHER_ADDR_LEN;
+    arp->plen = IP_ADDR_LEN;
+    arp->op = htons(ARPOP_REQUEST);
+    arp->s_ha = s_ha;
+    arp->s_pa = s_pa;
+    arp->t_ha = {{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}};
+    arp->t_pa = t_pa;
 
     return ret;
 }
 
 std::optional<addrs> get_addr_pair(int sockfd, const char* ifname) {
-    struct addrs ap {};
+    addrs ap {};
 
 #if defined(__linux__)
-    struct ifreq ifr;
+    ifreq ifr;
     strncpy(ifr.ifr_name, ifname, IFNAMSIZ);
 
     if (ioctl(sockfd, SIOCGIFHWADDR, &ifr) == -1) {
@@ -173,17 +146,17 @@ std::optional<addrs> get_addr_pair(int sockfd, const char* ifname) {
         perror("ioctl");
         return std::nullopt;
     }
-    ap.paddr = ((const struct sockaddr_in*)&ifr.ifr_addr)->sin_addr;
+    ap.paddr = ((const sockaddr_in*)&ifr.ifr_addr)->sin_addr;
 
     if (ioctl(sockfd, SIOCGIFNETMASK, &ifr) == -1) {
         puts("MASK");
         perror("ioctl");
         return std::nullopt;
     }
-    ap.mask = ((const struct sockaddr_in*)&ifr.ifr_addr)->sin_addr;
+    ap.mask = ((const sockaddr_in*)&ifr.ifr_addr)->sin_addr;
 #else
     // インタフェース名を取得する
-    struct ifaddrs* ifa;
+    ifaddrs* ifa;
     int ret = getifaddrs(&ifa);
     if(ret == -1) {
         perror("getifaddrs");
@@ -192,14 +165,14 @@ std::optional<addrs> get_addr_pair(int sockfd, const char* ifname) {
 
     bool h_found = false, p_found = false;
 
-    for(struct ifaddrs* it = ifa; it != nullptr && !(h_found && p_found); it = it->ifa_next) {
+    for(ifaddrs* it = ifa; it != nullptr && !(h_found && p_found); it = it->ifa_next) {
         if (strcmp(ifname, it->ifa_name) == 0) {
-            struct sockaddr* sa = it->ifa_addr;
+            sockaddr* sa = it->ifa_addr;
             switch (sa->sa_family) {
                 case AF_LINK:
                     {
                         if (!h_found) {
-                            const auto a = (const uint8_t*)LLADDR((const struct sockaddr_dl*)sa);
+                            const auto a = (const uint8_t*)LLADDR((const sockaddr_dl*)sa);
                             memcpy(OCTET(ap.haddr), a, ETHER_ADDR_LEN);
                             h_found = true;
                         }
@@ -208,8 +181,8 @@ std::optional<addrs> get_addr_pair(int sockfd, const char* ifname) {
                 case AF_INET:
                     {
                         if (!p_found) {
-                            in_addr_t ad = ((const struct sockaddr_in*)sa)->sin_addr.s_addr;
-                            in_addr_t nm = ((const struct sockaddr_in*)it->ifa_netmask)->sin_addr.s_addr;
+                            in_addr_t ad = ((const sockaddr_in*)sa)->sin_addr.s_addr;
+                            in_addr_t nm = ((const sockaddr_in*)it->ifa_netmask)->sin_addr.s_addr;
                             ap.paddr.s_addr = ad;
                             ap.mask.s_addr = nm;
                             p_found = true;
@@ -229,8 +202,8 @@ std::optional<addrs> get_addr_pair(int sockfd, const char* ifname) {
     return ap;
 }
 
-std::optional<std::vector<struct arp>> read_arp_resp(int sockfd, uint8_t* buf, size_t buflen) {
-    std::vector<arp> ret;
+std::optional<std::vector<arp_type>> read_arp_resp(int sockfd, uint8_t* buf, size_t buflen) {
+    std::vector<arp_type> ret;
 #if defined(__linux__)
     const ssize_t len = recvfrom(sockfd, buf, buflen, 0, NULL, NULL);
 #else
@@ -259,22 +232,26 @@ std::optional<std::vector<struct arp>> read_arp_resp(int sockfd, uint8_t* buf, s
     }
 
 #if defined(__linux__)
-    const auto eth = (struct eth_hdr*)buf;
-    std::optional<struct arp> a = extract_arp(eth);
-    if (a.has_value() && a->op == 2) {
+    const auto eth = (ether_header*)buf;
+    std::optional<arp_type> a = extract_arp(eth);
+    if (a.has_value() && ntohs(a->op) == 2) {
         ret.push_back(*a);
-    }
+    }/* else if (a.has_value()) {
+        printf("NOT RESP %d\n", ntohs(a->op));
+    }*/
 #else
     const uint8_t* packet = buf;
     while(packet - buf < len) {
-        const struct bpf_hdr* bpf_header;
-        bpf_header = (const struct bpf_hdr*)packet;
-        if (bpf_header->bh_caplen >= sizeof(const struct eth_hdr)) {
-            const auto eth = (const struct eth_hdr*)(packet + bpf_header->bh_hdrlen);
-            std::optional<struct arp> a = extract_arp(eth);
-            if (a.has_value() && a->op == 2) {
+        const bpf_hdr* bpf_header;
+        bpf_header = (const bpf_hdr*)packet;
+        if (bpf_header->bh_caplen >= sizeof(const ether_header)) {
+            const auto eth = (const ether_header*)(packet + bpf_header->bh_hdrlen);
+            std::optional<arp_type> a = extract_arp(eth);
+            if (a.has_value() && ntohs(a->op) == 2) {
                 ret.push_back(*a);
-            }
+            }/* else if (a.has_value()) {
+                printf("NOT RESP %d\n", ntohs(a->op));
+            }*/
         }
         packet += BPF_WORDALIGN(bpf_header->bh_hdrlen + bpf_header->bh_caplen);
     }
@@ -282,26 +259,16 @@ std::optional<std::vector<struct arp>> read_arp_resp(int sockfd, uint8_t* buf, s
     return std::move(ret);
 }
 
-std::optional<struct arp> extract_arp(const struct eth_hdr* eth) {
+std::optional<arp_type> extract_arp(const ether_header* eth) {
     const uint16_t eth_type = ntohs(eth->ether_type);
 
     if (eth_type != ETHERTYPE_ARP) {
         return std::nullopt;
     }
 
-    //printf("Got an arp packet\n");
-
-    const uint8_t* payload = (const uint8_t*)eth + sizeof(struct eth_hdr);
-    struct arp a;
-    a.htype = ntohs(*((const uint16_t*)payload));
-    a.ptype = ntohs(*(const uint16_t*)(payload+2));
-    a.hlen = *(payload+4);
-    a.plen = *(payload+5);
-    a.op = ntohs(*((const uint16_t*)(payload+6)));
-    memcpy(OCTET(a.s_ha), payload+8, ETHER_ADDR_LEN);
-    memcpy(&a.s_pa.s_addr, payload+14, IP_ADDR_LEN);
-    memcpy(OCTET(a.t_ha), payload+18, ETHER_ADDR_LEN);
-    memcpy(&a.t_pa.s_addr, payload+24, IP_ADDR_LEN);
+    const uint8_t* payload = (const uint8_t*)eth + sizeof(ether_header);
+    arp_type a;
+    memcpy(&a, payload, sizeof(arp_type));
 
     return a;
 }

@@ -4,12 +4,10 @@
 #   include <net/if_arp.h>
 #endif
 
-#include <sys/socket.h>
 #include <netinet/if_ether.h>
 #include <netinet/in.h>
 
 #include <algorithm>
-#include <array>
 #include <cstdint>
 #include <optional>
 #include <vector>
@@ -26,13 +24,7 @@ inline bool operator==(const ether_addr& lhs, const ether_addr& rhs) {
     return std::equal(std::begin(OCTET(lhs)), std::end(OCTET(lhs)), std::begin(OCTET(rhs)));
 }
 
-struct eth_hdr {
-    uint8_t dhost[ETHER_ADDR_LEN];
-    uint8_t shost[ETHER_ADDR_LEN];
-    uint16_t ether_type;
-};
-
-struct arp {
+struct __attribute__((packed)) arp_type {
     uint16_t htype;
     uint16_t ptype;
     uint8_t hlen;
