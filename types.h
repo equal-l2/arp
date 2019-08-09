@@ -8,6 +8,7 @@
 #include <netinet/if_ether.h> // ether_addr
 
 #include <algorithm> // std::equal
+#include <iterator> // std::cbegin
 #include <cstdint> // uint8_t
 
 #if defined(__DragonFly__) || defined(__FreeBSD__) || defined(__APPLE__)
@@ -19,7 +20,7 @@
 #define IP_ADDR_LEN sizeof(in_addr_t)
 
 inline bool operator==(const ether_addr& lhs, const ether_addr& rhs) {
-    return std::equal(std::begin(OCTET(lhs)), std::end(OCTET(lhs)), std::begin(OCTET(rhs)));
+    return std::equal(std::cbegin(OCTET(lhs)), std::cend(OCTET(lhs)), std::cbegin(OCTET(rhs)));
 }
 
 struct __attribute__((packed)) arp_type {
