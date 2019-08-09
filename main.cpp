@@ -1,14 +1,15 @@
 #include <unistd.h>
 
-#include <chrono>
+#include <chrono> // std::chrono
 #include <cstring> // memcpy
-#include <optional>
+#include <optional> // std::optional
 
 #if defined(__linux__)
-#   include <net/if.h>
+#   include <netpacket/packet.h> // sockaddr_ll
+#   include <net/if.h> // if_nametoindex
 #else
-#   include <sys/ioctl.h>
-#   include <net/bpf.h>
+#   include <sys/ioctl.h> // ioctl def macro
+#   include <net/bpf.h> // ioctl consts for BPF
 #endif
 
 #include "types.h"

@@ -2,24 +2,23 @@
 #include <sys/types.h>
 // or break build on FreeBSD
 
-#include <arpa/inet.h>
-#include <ifaddrs.h>
-#include <net/if.h>
-#include <net/if_arp.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
+#include <net/if.h> // if_nametoindex, ifreq
+#include <sys/ioctl.h> // ioctl consts
+#include <unistd.h> // close
 
 #if defined(__linux__)
-#   include <linux/if_packet.h>
+#   include <net/if_packet.h>
+#   include <netpacket/packet.h> // sockaddr_ll
 #else
-#   include <fcntl.h>
-#   include <net/bpf.h>
-#   include <net/if_dl.h>
+#   include <fcntl.h> // open
+#   include <ifaddrs.h> // getifaddrs
+#   include <net/bpf.h> // ioctl consts for BPF
+#   include <net/if_dl.h> // sockaddr_dl
 #endif
 
-#include <cstdio>
-#include <cstring>
-#include <cerrno>
+#include <cstdio> // fprintf, sprintf, perror
+#include <cstring> // memset, memcpy
+#include <cerrno> // errno
 
 #include "types.h"
 #include "util.h"
