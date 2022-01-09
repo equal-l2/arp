@@ -55,14 +55,9 @@ struct sockaddr_ll configure_sockaddr(const char* ifname, int sockfd, ether_addr
 }
 #endif
 
-int main(int argc, char** argv) {
-    if (argc != 2) {
-        fprintf(stderr, "%s [interface]\n", argv[0]);
-        return -1;
-    }
-
+int run(char* iface) {
     int sockfd;
-    if ((sockfd = sock_open(argv[1]) ) == -1) {
+    if ((sockfd = sock_open(iface) ) == -1) {
         return -1;
     }
 
@@ -79,9 +74,9 @@ int main(int argc, char** argv) {
 #endif
 
     // 自身のMACアドレスとIPアドレスを取得する
-    const auto ap_opt = get_addr_pair(sockfd, argv[1]);
+    const auto ap_opt = get_addr_pair(sockfd, iface);
     if (!ap_opt) {
-        fprintf(stderr, "Could not retrive addresses assigned to \"%s\"\n", argv[1]);
+        fprintf(stderr, "Could not retrive addresses assigned to \"%s\"\n", iface);
         return -1;
     }
     const auto ap = *ap_opt;
@@ -112,11 +107,12 @@ int main(int argc, char** argv) {
 
     for(uint32_t i = begin; i < end; i++) {
         const in_addr addr = {htonl(i)};
-        const auto arp_frame = generate_arp_frame(ap.haddr, ap.paddr, addr).data();
+        const auto arp_frame = generate_arp_frame(ap.haddr, ap.paddr, addr);
+        const auto arp_frame_ptr = arp_frame.data();
 #if defined(__linux__)
-        const ssize_t ret = sendto(sockfd, arp_frame, 42, 0, (const struct sockaddr*)&sendaddr, sizeof(sendaddr));
+        const ssize_t ret = sendto(sockfd, arp_frame_ptr, 42, 0, (const struct sockaddr*)&sendaddr, sizeof(sendaddr));
 #else
-        const ssize_t ret = write(sockfd, arp_frame, 42);
+        const ssize_t ret = write(sockfd, arp_frame_ptr, 42);
 #endif
         if (ret == -1) {
             perror("sendto/write");
@@ -128,4 +124,15 @@ int main(int argc, char** argv) {
     puts("[*] ARP requests sent, waiting replies for 3 seconds...");
     accept_arp_for(3000, sockfd, buf, buf_len, ap.haddr);
     close(sockfd);
+
+    return 0;
+}
+
+int main(int argc, char** argv) {
+    if (argc != 2) {
+        fprintf(stderr, "%s [interface]\n", argv[0]);
+        return -1;
+    }
+
+    return run(argv[1]);
 }
